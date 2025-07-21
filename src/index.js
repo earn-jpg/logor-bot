@@ -25,6 +25,21 @@ for (const file of fs.readdirSync(path.join(__dirname,'commands')).filter(f => f
 client.once('ready', async () => {
   console.log(`✅ Logged in as ${client.user.tag}`);
 
+  const rest = new REST({ version: '10' }).setToken(config.token);
+  const payload = client.commands.map(cmd => cmd.data.toJSON());
+
+  try {
+    console.log('🔄 Registering guild commands…');
+    await rest.put(
+      Routes.applicationGuildCommands(config.clientId, config.guildId),
+      { body: payload }
+    );
+    console.log('✔️ Guild commands registered.');
+  } catch (err) {
+    console.error('❌ Command registration failed:', err);
+  }
+});
+
   // only attempt to register if token & clientId are set
   if (!config.token || !config.clientId) {
     console.error('❌ Missing token or clientId—cannot register commands.');
@@ -40,8 +55,7 @@ client.once('ready', async () => {
     console.log('✔️ Slash commands registered.');
   } catch (err) {
     console.error('❌ Failed to register commands:', err);
-  }
-});
+  };
 
 client.on('interactionCreate', async interaction => {
   if (!interaction.isChatInputCommand()) return;

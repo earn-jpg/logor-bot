@@ -31,9 +31,9 @@ const config = {
 }
 
 // src/config.js
-// src/config.js
 module.exports = {
   token:            process.env.DISCORD_TOKEN,
   clientId:         process.env.CLIENT_ID,
+  guildId:          process.env.GUILD_ID,            // <- new
   punishmentRoleId: process.env.PUNISHMENT_ROLE_ID,
 };
