@@ -3,7 +3,7 @@ package-lock.json
 
 # DO NOT REMOVE THESE FOR SECURITY
 src/config.js
-
+.env
 database.yml
 terminal.log
 node_modules/
