@@ -1,27 +1,29 @@
 // src/commands/undo-logor.js
 const { SlashCommandBuilder } = require('discord.js');
-const logorCommand = require('./logor.js');  // to get its storedRoles map
+const storedRoles = require('../stores/roleStore.js');
 
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('undo-logor')
-    .setDescription('Restore all your previous roles and remove the punishment role'),
+    .setDescription('Restore all previously removed roles (defaults to yourself) and remove the punishment role.')
+    .addUserOption(opt =>
+      opt.setName('target')
+         .setDescription('Which member to restore')
+         .setRequired(false)
+    ),
   async execute(interaction) {
-    const member = interaction.member;
-    const store = logorCommand.storedRoles;
-    const prevRoles = store.get(member.id) || [];
+    const targetMember = interaction.options.getMember('target') || interaction.member;
+    const prev = storedRoles.get(targetMember.id) || [];
 
-    // Restore previous roles
-    if (prevRoles.length) {
-      await member.roles.add(prevRoles);
-      store.delete(member.id);
+    if (prev.length) {
+      await targetMember.roles.add(prev);
+      storedRoles.delete(targetMember.id);
     }
+    await targetMember.roles.remove(interaction.client.config.punishmentRoleId);
 
-    // Remove punishment role
-    await member.roles.remove(interaction.client.config.punishmentRoleId);
-
+    const name = targetMember.id === interaction.member.id ? 'Your' : `${targetMember.user.tag}’s`;
     return interaction.reply({
-      content: 'Unlogored.',
+      content: `${name} has been unlogored.`,
       ephemeral: true
     });
   }

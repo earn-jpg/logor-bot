@@ -1,35 +1,35 @@
 // src/commands/logor.js
 const { SlashCommandBuilder } = require('discord.js');
-
-// In-memory store: userId → array of role IDs
-const storedRoles = new Map();
+const storedRoles = require('../stores/roleStore.js');
 
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('logor')
-    .setDescription('Remove all your roles and give you a punishment role'),
+    .setDescription('Remove all roles from a member (defaults to yourself) and give the punishment role.')
+    .addUserOption(opt =>
+      opt.setName('target')
+         .setDescription('Which member to punish')
+         .setRequired(false)
+    ),
   async execute(interaction) {
-    const member = interaction.member;
+    const targetMember = interaction.options.getMember('target') || interaction.member;
 
-    // Grab all current roles (except @everyone)
-    const currentRoles = member.roles.cache
+    // gather all roles except @everyone
+    const toRemove = targetMember.roles.cache
       .filter(r => r.id !== interaction.guild.id)
       .map(r => r.id);
 
-    // Save to memory
-    storedRoles.set(member.id, currentRoles);
+    // save their existing roles
+    storedRoles.set(targetMember.id, toRemove);
 
-    // Remove them & add the punishment role
-    if (currentRoles.length) {
-      await member.roles.remove(currentRoles);
-    }
-    await member.roles.add(interaction.client.config.punishmentRoleId);
+    // remove them & add punishment
+    if (toRemove.length) await targetMember.roles.remove(toRemove);
+    await targetMember.roles.add(interaction.client.config.punishmentRoleId);
 
+    const name = targetMember.id === interaction.member.id ? 'You have' : `${targetMember.user.tag} has`;
     return interaction.reply({
-      content: 'You have been logored: your roles are removed.',
+      content: `${name} has been logored (roles removed).`,
       ephemeral: true
     });
-  },
-  // Expose the store so undo-logor can read it:
-  storedRoles
+  }
 };
