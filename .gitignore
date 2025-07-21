@@ -7,3 +7,4 @@ database.yml
 terminal.log
 node_modules/
 data/
+.env
