@@ -1,37 +1,28 @@
+// src/commands/undo-logor.js
 const { SlashCommandBuilder } = require('discord.js');
-const fs = require('fs');
+const logorCommand = require('./logor.js');  // to get its storedRoles map
 
 module.exports = {
   data: new SlashCommandBuilder()
-    .setName('undologor')
-    .setDescription('Restores saved roles and removes punishment role')
-    .addUserOption(option =>
-      option.setName('user')
-        .setDescription('The user to restore')
-        .setRequired(true)
-    ),
+    .setName('undo-logor')
+    .setDescription('Restore all your previous roles and remove the punishment role'),
   async execute(interaction) {
-    await interaction.deferReply({ ephemeral: true });
+    const member = interaction.member;
+    const store = logorCommand.storedRoles;
+    const prevRoles = store.get(member.id) || [];
 
-    const target = interaction.options.getMember('user');
-    const guild = interaction.guild;
-    const backupPath = `./data/${guild.id}-${target.id}.json`;
-    const roleId = process.env.PUNISH_ROLE_ID;
-
-    if (!fs.existsSync(backupPath)) {
-      return interaction.editReply('No saved roles found for that user.');
+    // Restore previous roles
+    if (prevRoles.length) {
+      await member.roles.add(prevRoles);
+      store.delete(member.id);
     }
 
-    const savedRoles = JSON.parse(fs.readFileSync(backupPath));
+    // Remove punishment role
+    await member.roles.remove(interaction.client.config.punishmentRoleId);
 
-    try {
-      await target.roles.remove(roleId);
-      await target.roles.add(savedRoles);
-      fs.unlinkSync(backupPath);
-      await interaction.editReply(`Restored roles to ${target.user.tag} and removed punishment role.`);
-    } catch (err) {
-      console.error(err);
-      await interaction.editReply('Failed to restore roles.');
-    }
+    return interaction.reply({
+      content: 'Unlogored.',
+      ephemeral: true
+    });
   }
 };
