@@ -1,49 +1,58 @@
 // src/index.js
+require('dotenv').config();                       // always safe, no .env on Railway
 const fs = require('node:fs');
 const path = require('node:path');
 const { Client, Collection, GatewayIntentBits, REST, Routes } = require('discord.js');
 const config = require('./config.js');
 
-const client = new Client({ intents: [ GatewayIntentBits.Guilds, GatewayIntentBits.GuildMembers ] });
+console.log('🔍 ENV KEYS:', Object.keys(process.env));  
+console.log('🔍 config.token:', config.token);
+console.log('🔍 config.clientId:', config.clientId);
+console.log('🔍 config.punishmentRoleId:', config.punishmentRoleId);
+
+const client = new Client({
+  intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMembers]
+});
 client.config = config;
 
-// Load command modules
+// load commands
 client.commands = new Collection();
-const commandsPath = path.join(__dirname, 'commands');
-for (const file of fs.readdirSync(commandsPath).filter(f => f.endsWith('.js'))) {
-  const cmd = require(path.join(commandsPath, file));
+for (const file of fs.readdirSync(path.join(__dirname,'commands')).filter(f => f.endsWith('.js'))) {
+  const cmd = require(`./commands/${file}`);
   client.commands.set(cmd.data.name, cmd);
 }
 
-// Register slash commands globally
-(async () => {
+client.once('ready', async () => {
+  console.log(`✅ Logged in as ${client.user.tag}`);
+
+  // only attempt to register if token & clientId are set
+  if (!config.token || !config.clientId) {
+    console.error('❌ Missing token or clientId—cannot register commands.');
+    return;
+  }
+
   const rest = new REST({ version: '10' }).setToken(config.token);
   const payload = client.commands.map(cmd => cmd.data.toJSON());
-  console.log('Registering slash commands...');
-  await rest.put(
-    Routes.applicationCommands(config.clientId),
-    { body: payload }
-  );
-  console.log('Slash commands registered.');
-})();
 
-// Handle interactions
+  try {
+    console.log('🔄 Registering slash commands…');
+    await rest.put(Routes.applicationCommands(config.clientId), { body: payload });
+    console.log('✔️ Slash commands registered.');
+  } catch (err) {
+    console.error('❌ Failed to register commands:', err);
+  }
+});
+
 client.on('interactionCreate', async interaction => {
   if (!interaction.isChatInputCommand()) return;
-
   const command = client.commands.get(interaction.commandName);
   if (!command) return;
-
   try {
     await command.execute(interaction);
   } catch (err) {
     console.error(err);
-    await interaction.reply({ content: '❌ There was an error running that command.', ephemeral: true });
+    interaction.reply({ content: '❌ Error running command.', ephemeral: true });
   }
-});
-
-client.once('ready', () => {
-  console.log(`Logged in as ${client.user.tag}`);
 });
 
 client.login(config.token);
