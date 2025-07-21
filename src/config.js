@@ -30,4 +30,11 @@ const config = {
     }
 }
 
+// src/config.js
+module.exports = {
+  token: process.env.DISCORD_TOKEN,       // your bot token in env
+  clientId: process.env.CLIENT_ID,        // your bot’s application/client ID
+  punishmentRoleId: process.env.PUNISHMENT_ROLE_ID, // the role to give when “punished”
+};
+
 module.exports = config;
